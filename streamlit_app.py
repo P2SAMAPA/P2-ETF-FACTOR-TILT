@@ -14,46 +14,73 @@ from huggingface_hub import hf_hub_download
 
 from us_calendar import USMarketCalendar
 
-# ── Page config ───────────────────────────────────────────────────────────────
 st.set_page_config(
     page_title="P2Quant Factor Tilt",
     page_icon="📐",
     layout="wide",
 )
 
-# ── Styling — matches REGIME-HRP aesthetic ────────────────────────────────────
 st.markdown("""
 <style>
-.main-header { font-size: 2.4rem; font-weight: 600; color: #1f77b4; margin-bottom: 0.2rem; }
-.sub-header  { font-size: 1rem; color: #666; margin-bottom: 1.5rem; }
-.hero-card {
-    background: linear-gradient(135deg, #1f77b4 0%, #2C5282 100%);
-    border-radius: 16px; padding: 1.4rem 1.6rem; color: white;
-    margin-bottom: 0.5rem;
+.main-header { font-size: 2.2rem; font-weight: 600; color: #1f77b4; margin-bottom: 0; }
+.sub-header  { font-size: 0.95rem; color: #888; margin-bottom: 0.5rem; }
+
+/* Explanation box */
+.csfm-explain {
+    background: #f0f4fa;
+    border-left: 4px solid #1f77b4;
+    border-radius: 0 10px 10px 0;
+    padding: 0.75rem 1rem;
+    margin-bottom: 1.2rem;
+    font-size: 0.88rem;
+    color: #333;
+    line-height: 1.6;
 }
-.hero-label { font-size: 0.78rem; opacity: 0.75; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.2rem; }
-.hero-value { font-size: 2rem; font-weight: 700; line-height: 1.1; }
-.hero-sub   { font-size: 0.82rem; opacity: 0.8; margin-top: 0.3rem; }
-.hero-card-green {
-    background: linear-gradient(135deg, #276749 0%, #1E4D35 100%);
-    border-radius: 16px; padding: 1.4rem 1.6rem; color: white;
-    margin-bottom: 0.5rem;
+.csfm-explain b { color: #1f77b4; }
+
+/* Universe hero sections */
+.universe-header {
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: #888;
+    margin-bottom: 0.4rem;
 }
-.hero-card-amber {
-    background: linear-gradient(135deg, #92400E 0%, #78350F 100%);
-    border-radius: 16px; padding: 1.4rem 1.6rem; color: white;
-    margin-bottom: 0.5rem;
+
+/* ETF rank cards */
+.rank-card {
+    border-radius: 12px;
+    padding: 0.9rem 1rem;
+    color: white;
+    margin-bottom: 0.4rem;
+    position: relative;
 }
-.hero-card-purple {
-    background: linear-gradient(135deg, #5B21B6 0%, #3B0764 100%);
-    border-radius: 16px; padding: 1.4rem 1.6rem; color: white;
-    margin-bottom: 0.5rem;
+.rank-card .rc-rank  { font-size: 0.68rem; opacity: 0.75; text-transform: uppercase; letter-spacing: .05em; }
+.rank-card .rc-ticker{ font-size: 1.55rem; font-weight: 700; line-height: 1.1; }
+.rank-card .rc-score { font-size: 0.88rem; opacity: 0.85; margin-top: 1px; }
+.rank-card .rc-tilt  { font-size: 0.75rem; opacity: 0.70; margin-top: 2px; }
+
+.rc-1 { background: linear-gradient(135deg, #1a5fa8 0%, #2C5282 100%); }
+.rc-2 { background: linear-gradient(135deg, #2d7dd2 0%, #1a5fa8 100%); }
+.rc-3 { background: linear-gradient(135deg, #5499d8 0%, #2d7dd2 100%); }
+
+.rc-eq-1 { background: linear-gradient(135deg, #1a6b3c 0%, #155534 100%); }
+.rc-eq-2 { background: linear-gradient(135deg, #228b4e 0%, #1a6b3c 100%); }
+.rc-eq-3 { background: linear-gradient(135deg, #2eaa63 0%, #228b4e 100%); }
+
+.rc-fi-1 { background: linear-gradient(135deg, #7b2d8b 0%, #5c1f69 100%); }
+.rc-fi-2 { background: linear-gradient(135deg, #9b3dab 0%, #7b2d8b 100%); }
+.rc-fi-3 { background: linear-gradient(135deg, #b556c4 0%, #9b3dab 100%); }
+
+.divider-col {
+    border-left: 1px solid #e0e0e0;
+    height: 100%;
 }
-.rank-badge-1 { background:#1f77b4; color:white; border-radius:8px; padding:2px 10px; font-weight:700; font-size:1rem; }
-.rank-badge-2 { background:#4a9eca; color:white; border-radius:8px; padding:2px 10px; font-weight:600; }
-.rank-badge-3 { background:#7abde0; color:white; border-radius:8px; padding:2px 10px; font-weight:600; }
-.stTabs [data-baseweb="tab-list"] { gap: 8px; }
-.stTabs [data-baseweb="tab"] { border-radius: 8px 8px 0 0; }
+
+/* Sidebar info rows */
+.sb-row { font-size: 0.85rem; color: #444; margin-bottom: 0.3rem; }
+.sb-val  { font-weight: 600; color: #1f77b4; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -61,24 +88,13 @@ HF_RESULTS_REPO = "P2SAMAPA/p2-etf-factor-tilt-results"
 HF_RESULTS_FILE = "factor_tilt_results.parquet"
 
 FACTOR_DISPLAY = {
-    "Mkt-RF": "Market",
-    "SMB":    "Size",
-    "HML":    "Value",
-    "RMW":    "Profitability",
-    "CMA":    "Investment",
-    "Mom":    "Momentum",
+    "Mkt-RF": "Market", "SMB": "Size", "HML": "Value",
+    "RMW": "Profitability", "CMA": "Investment", "Mom": "Momentum",
 }
 FACTOR_COLORS = {
-    "Market":       "#1f77b4",
-    "Size":         "#ff7f0e",
-    "Value":        "#2ca02c",
-    "Profitability":"#d62728",
-    "Investment":   "#9467bd",
-    "Momentum":     "#8c564b",
+    "Market": "#1f77b4", "Size": "#ff7f0e", "Value": "#2ca02c",
+    "Profitability": "#d62728", "Investment": "#9467bd", "Momentum": "#8c564b",
 }
-
-UNIVERSE_LABELS = {"fi": "FI / Commodities", "equity": "Equity Sectors", "combined": "Combined"}
-UNIVERSE_ICONS  = {"fi": "💰", "equity": "📈", "combined": "🌐"}
 
 
 # ── Data loading ──────────────────────────────────────────────────────────────
@@ -103,125 +119,128 @@ def get_latest(df: pd.DataFrame, universe: str) -> pd.DataFrame:
     sub = df[df["universe"] == universe]
     if sub.empty:
         return sub
-    latest = sub["run_date"].max()
-    return sub[sub["run_date"] == latest].sort_values("csfm_rank")
-
-
-# ── Hero card helper ──────────────────────────────────────────────────────────
-
-def hero_card(label: str, value: str, sub: str = "", style: str = "hero-card") -> str:
-    return f"""
-    <div class="{style}">
-        <div class="hero-label">{label}</div>
-        <div class="hero-value">{value}</div>
-        {"<div class='hero-sub'>" + sub + "</div>" if sub else ""}
-    </div>"""
+    return sub[sub["run_date"] == sub["run_date"].max()].sort_values("csfm_rank")
 
 
 # ── Sidebar ───────────────────────────────────────────────────────────────────
 
 cal = USMarketCalendar()
 next_td = cal.next_trading_day()
-is_today_trading = cal.is_trading_day()
+is_today = cal.is_trading_day()
 
-st.sidebar.markdown("## ⚙️ P2Quant — Factor Tilt")
-st.sidebar.markdown(
-    f"**📅 Next trading day:** {next_td.strftime('%a %d %b %Y')}"
-)
-if is_today_trading:
+df = load_results()
+latest_run_date = df["run_date"].max() if df is not None and not df.empty else None
+n_dates = df["run_date"].nunique() if df is not None and not df.empty else 0
+
+st.sidebar.markdown("## 📐 P2Quant Factor Tilt")
+st.sidebar.divider()
+
+st.sidebar.markdown("### 📅 Market calendar")
+st.sidebar.markdown(f"**Last run:** {latest_run_date.strftime('%a %d %b %Y') if latest_run_date else '—'}")
+st.sidebar.markdown(f"**Next trading day:** {next_td.strftime('%a %d %b %Y')}")
+if is_today:
     st.sidebar.success("Today is a trading day")
 else:
     st.sidebar.info("Market closed today")
+st.sidebar.markdown(f"*{n_dates} trading days in history*")
 
 st.sidebar.divider()
-st.sidebar.markdown("### Engine parameters")
+st.sidebar.markdown("### ⚙️ Engine parameters")
 st.sidebar.markdown("- **Factors:** MKT, SMB, HML, RMW, CMA, Mom")
-st.sidebar.markdown("- **Windows:** 21d / 63d / 126d")
+st.sidebar.markdown("- **Windows:** 21d / 63d / 126d rolling OLS")
 st.sidebar.markdown("- **Tilt lookbacks:** 21d / 42d / 63d")
 st.sidebar.markdown("- **Universes:** FI, Equity, Combined")
 st.sidebar.divider()
-st.sidebar.markdown("### Links")
+st.sidebar.markdown("### 🔗 Links")
 st.sidebar.markdown("[GitHub repo](https://github.com/P2SAMAPA/P2-ETF-FACTOR-TILT)")
 st.sidebar.markdown("[HF dataset](https://huggingface.co/datasets/P2SAMAPA/p2-etf-factor-tilt-results)")
 
 # ── Main header ───────────────────────────────────────────────────────────────
 
 st.markdown('<div class="main-header">📐 P2Quant Factor Tilt</div>', unsafe_allow_html=True)
-st.markdown('<div class="sub-header">Cross-Sectional Factor Momentum — Ranking ETFs by the momentum of their factor exposures</div>', unsafe_allow_html=True)
+st.markdown('<div class="sub-header">Cross-Sectional Factor Momentum — ranking ETFs by the acceleration of their factor exposures</div>', unsafe_allow_html=True)
 
-# ── Load data ─────────────────────────────────────────────────────────────────
+# ── CSFM explanation ──────────────────────────────────────────────────────────
 
-df = load_results()
+st.markdown("""
+<div class="csfm-explain">
+<b>What is the CSFM score?</b>&nbsp; Every other return engine asks <i>"which ETF performed best?"</i>
+This engine asks something different: <i>"which ETF's factor tilts are <b>accelerating</b> right now?"</i>
+The score measures how much each ETF's exposure to six Fama-French factors (Market, Size, Value,
+Profitability, Investment, Momentum) has <b>changed</b> over the recent period, standardised cross-sectionally.
+A high positive score means capital is actively rotating <i>into</i> this ETF's factor profile —
+a signal that often leads raw price momentum by days to weeks.
+Score = cross-sectional z-score (higher = stronger positive tilt momentum).
+</div>
+""", unsafe_allow_html=True)
+
+# ── Check data ────────────────────────────────────────────────────────────────
 
 if df is None or df.empty:
     st.warning("No results available yet. The engine runs daily at 22:30 UTC after market close.")
     st.stop()
 
-latest_run_date = df["run_date"].max()
-n_dates = df["run_date"].nunique()
+# ── Hero section — top 3 per universe ────────────────────────────────────────
 
-# ── Top-level hero cards ──────────────────────────────────────────────────────
+combined_latest = get_latest(df, "combined")
+equity_latest   = get_latest(df, "equity")
+fi_latest       = get_latest(df, "fi")
 
-c1, c2, c3, c4 = st.columns(4)
-with c1:
-    st.markdown(hero_card(
-        "Last run date",
-        latest_run_date.strftime("%d %b %Y"),
-        f"{n_dates} trading days in history",
-    ), unsafe_allow_html=True)
-with c2:
-    st.markdown(hero_card(
-        "Next trading day",
-        next_td.strftime("%d %b %Y"),
-        "NYSE calendar",
-        style="hero-card-green",
-    ), unsafe_allow_html=True)
-with c3:
-    combined_latest = get_latest(df, "combined")
-    top_combined = combined_latest.iloc[0]["ticker"] if not combined_latest.empty else "—"
-    top_score    = combined_latest.iloc[0]["csfm_score"] if not combined_latest.empty else 0
-    st.markdown(hero_card(
-        "Top combined ETF",
-        top_combined,
-        f"CSFM score: {top_score:.3f}",
-        style="hero-card-amber",
-    ), unsafe_allow_html=True)
-with c4:
-    regime_val = combined_latest.iloc[0]["regime"] if not combined_latest.empty else "unknown"
-    regime_colors = {"stress": "hero-card-amber", "calm": "hero-card-green", "neutral": "hero-card-purple"}
-    regime_style  = regime_colors.get(str(regime_val).lower(), "hero-card-purple")
-    dominant_f = combined_latest.iloc[0]["dominant_factor"] if not combined_latest.empty else "—"
-    dominant_d = combined_latest.iloc[0]["dominant_direction"] if not combined_latest.empty else ""
-    st.markdown(hero_card(
-        "Macro regime",
-        str(regime_val).capitalize(),
-        f"Dominant tilt: {dominant_f} ({dominant_d})",
-        style=regime_style,
-    ), unsafe_allow_html=True)
+def universe_top3_html(rows: pd.DataFrame, style_prefix: str, universe_label: str) -> str:
+    """Render a universe label + 3 stacked rank cards."""
+    html = f'<div class="universe-header">{universe_label}</div>'
+    for i, (_, row) in enumerate(rows.head(3).iterrows(), start=1):
+        ticker   = row.get("ticker", "—")
+        score    = row.get("csfm_score", 0.0)
+        dom_f    = row.get("dominant_factor", "")
+        dom_d    = row.get("dominant_direction", "")
+        arrow    = "↑" if dom_d == "strengthening" else ("↓" if dom_d == "weakening" else "")
+        tilt_str = f"{dom_f} {arrow}" if dom_f else ""
+        html += f"""
+        <div class="rank-card {style_prefix}-{i}">
+            <div class="rc-rank">#{i}</div>
+            <div class="rc-ticker">{ticker}</div>
+            <div class="rc-score">Score: {score:.3f}</div>
+            {"<div class='rc-tilt'>" + tilt_str + "</div>" if tilt_str else ""}
+        </div>"""
+    return html
+
+
+col_comb, col_div1, col_eq, col_div2, col_fi = st.columns([3, 0.08, 3, 0.08, 3])
+
+with col_comb:
+    st.markdown(universe_top3_html(combined_latest, "rc", "🌐 Combined — top 3"), unsafe_allow_html=True)
+
+with col_div1:
+    st.markdown('<div style="border-left:1px solid #e0e0e0;height:260px;margin:0 auto;"></div>', unsafe_allow_html=True)
+
+with col_eq:
+    st.markdown(universe_top3_html(equity_latest, "rc-eq", "📈 Equity sectors — top 3"), unsafe_allow_html=True)
+
+with col_div2:
+    st.markdown('<div style="border-left:1px solid #e0e0e0;height:260px;margin:0 auto;"></div>', unsafe_allow_html=True)
+
+with col_fi:
+    st.markdown(universe_top3_html(fi_latest, "rc-fi", "💰 FI / Commodities — top 3"), unsafe_allow_html=True)
 
 st.divider()
 
 # ── Universe tabs ─────────────────────────────────────────────────────────────
 
-tab_fi, tab_eq, tab_comb, tab_history = st.tabs([
-    "💰 FI / Commodities",
-    "📈 Equity Sectors",
-    "🌐 Combined",
-    "📊 History",
+tab_comb, tab_eq, tab_fi, tab_history = st.tabs([
+    "🌐 Combined", "📈 Equity sectors", "💰 FI / Commodities", "📊 History",
 ])
 
 DELTA_COLS = ["delta_Mkt-RF", "delta_SMB", "delta_HML", "delta_RMW", "delta_CMA", "delta_Mom"]
-BETA_COLS  = ["beta_Mkt-RF",  "beta_SMB",  "beta_HML",  "beta_RMW",  "beta_CMA",  "beta_Mom"]
 
 
-def render_universe_tab(universe_key: str):
-    latest = get_latest(df, universe_key)
+def render_universe_tab(latest: pd.DataFrame):
     if latest.empty:
         st.info("No data for this universe yet.")
         return
 
     run_dt = latest["run_date"].iloc[0].strftime("%d %b %Y")
-    st.caption(f"Data as of {run_dt}")
+    st.caption(f"Scores as of {run_dt}")
 
     # ── Ranking bar chart ─────────────────────────────────────────────────────
     st.markdown("#### CSFM score ranking")
@@ -233,12 +252,12 @@ def render_universe_tab(universe_key: str):
         marker_color=colors,
         text=[f"{s:.3f}" for s in latest["csfm_score"]],
         textposition="outside",
-        hovertemplate="<b>%{y}</b><br>Score: %{x:.4f}<extra></extra>",
+        hovertemplate="<b>%{y}</b><br>CSFM score: %{x:.4f}<extra></extra>",
     ))
     fig_rank.update_layout(
         height=max(300, len(latest) * 36),
         yaxis=dict(autorange="reversed"),
-        margin=dict(l=10, r=60, t=20, b=20),
+        margin=dict(l=10, r=70, t=10, b=20),
         xaxis_title="CSFM score (cross-sectional z-score)",
         plot_bgcolor="rgba(0,0,0,0)",
         paper_bgcolor="rgba(0,0,0,0)",
@@ -247,11 +266,11 @@ def render_universe_tab(universe_key: str):
 
     # ── Factor tilt heatmap ───────────────────────────────────────────────────
     st.markdown("#### Factor tilt delta (63d window, 42d lookback)")
+    st.caption("Each cell = change in factor loading (beta) over the lookback period. Blue = tilt strengthening, Red = tilt weakening.")
     available_delta = [c for c in DELTA_COLS if c in latest.columns]
     if available_delta:
         heat_df = latest.set_index("ticker")[available_delta].copy()
-        heat_df.columns = [FACTOR_DISPLAY.get(c.replace("delta_",""), c.replace("delta_","")) for c in available_delta]
-
+        heat_df.columns = [FACTOR_DISPLAY.get(c.replace("delta_", ""), c.replace("delta_", "")) for c in available_delta]
         fig_heat = go.Figure(go.Heatmap(
             z=heat_df.values,
             x=heat_df.columns.tolist(),
@@ -266,31 +285,11 @@ def render_universe_tab(universe_key: str):
         ))
         fig_heat.update_layout(
             height=max(300, len(heat_df) * 36 + 60),
-            margin=dict(l=10, r=10, t=20, b=20),
+            margin=dict(l=10, r=10, t=10, b=20),
             plot_bgcolor="rgba(0,0,0,0)",
             paper_bgcolor="rgba(0,0,0,0)",
         )
         st.plotly_chart(fig_heat, use_container_width=True)
-
-    # ── Top 5 detail cards ────────────────────────────────────────────────────
-    st.markdown("#### Top 5 — factor tilt detail")
-    top5 = latest.head(5)
-    cols = st.columns(min(5, len(top5)))
-    for i, (_, row) in enumerate(top5.iterrows()):
-        with cols[i]:
-            score_str = f"{row['csfm_score']:.3f}"
-            rank_str  = f"#{int(row['csfm_rank'])}"
-            dom_f = row.get("dominant_factor", "—")
-            dom_d = row.get("dominant_direction", "")
-            arrow = "↑" if dom_d == "strengthening" else "↓"
-            st.markdown(f"""
-            <div style="background:linear-gradient(135deg,#1f77b4,#2C5282);border-radius:12px;
-                        padding:1rem;color:white;text-align:center;margin-bottom:0.5rem;">
-                <div style="font-size:0.7rem;opacity:0.75;text-transform:uppercase;letter-spacing:.05em">{rank_str}</div>
-                <div style="font-size:1.6rem;font-weight:700">{row['ticker']}</div>
-                <div style="font-size:1rem;opacity:0.9">{score_str}</div>
-                <div style="font-size:0.75rem;opacity:0.75;margin-top:4px">{dom_f} {arrow}</div>
-            </div>""", unsafe_allow_html=True)
 
     # ── Full table ────────────────────────────────────────────────────────────
     with st.expander("Full rankings table"):
@@ -308,20 +307,19 @@ def render_universe_tab(universe_key: str):
         )
 
 
-with tab_fi:
-    render_universe_tab("fi")
+with tab_comb:
+    render_universe_tab(combined_latest)
 
 with tab_eq:
-    render_universe_tab("equity")
+    render_universe_tab(equity_latest)
 
-with tab_comb:
-    render_universe_tab("combined")
+with tab_fi:
+    render_universe_tab(fi_latest)
 
 # ── History tab ───────────────────────────────────────────────────────────────
 
 with tab_history:
     st.markdown("#### CSFM score history — combined universe")
-
     hist = df[df["universe"] == "combined"].copy()
     if hist.empty:
         st.info("No history yet.")
@@ -332,7 +330,6 @@ with tab_history:
             options=all_tickers,
             default=all_tickers[:6] if len(all_tickers) >= 6 else all_tickers,
         )
-
         if selected:
             pivot = hist[hist["ticker"].isin(selected)].pivot(
                 index="run_date", columns="ticker", values="csfm_score"
@@ -340,46 +337,38 @@ with tab_history:
             fig_hist = go.Figure()
             for ticker in pivot.columns:
                 fig_hist.add_trace(go.Scatter(
-                    x=pivot.index,
-                    y=pivot[ticker],
-                    name=ticker,
-                    mode="lines",
+                    x=pivot.index, y=pivot[ticker], name=ticker, mode="lines",
                     hovertemplate=f"<b>{ticker}</b><br>%{{x|%d %b %Y}}<br>Score: %{{y:.3f}}<extra></extra>",
                 ))
             fig_hist.update_layout(
                 height=420,
-                xaxis_title="Date",
-                yaxis_title="CSFM score",
+                xaxis_title="Date", yaxis_title="CSFM score",
                 hovermode="x unified",
                 plot_bgcolor="rgba(0,0,0,0)",
                 paper_bgcolor="rgba(0,0,0,0)",
-                legend=dict(orientation="h", yanchor="bottom", y=1.01, xanchor="left", x=0),
+                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0),
                 margin=dict(l=10, r=10, t=40, b=20),
             )
             st.plotly_chart(fig_hist, use_container_width=True)
 
-        # ── Dominant factor frequency over time ───────────────────────────────
         st.markdown("#### Dominant factor frequency (combined universe)")
         if "dominant_factor" in hist.columns:
             factor_counts = (
                 hist.groupby(["run_date", "dominant_factor"])
-                .size()
-                .reset_index(name="count")
+                .size().reset_index(name="count")
             )
             fig_factors = px.bar(
-                factor_counts,
-                x="run_date", y="count", color="dominant_factor",
+                factor_counts, x="run_date", y="count", color="dominant_factor",
                 color_discrete_map=FACTOR_COLORS,
                 labels={"run_date": "Date", "count": "ETF count", "dominant_factor": "Factor"},
-                height=320,
+                height=300,
             )
             fig_factors.update_layout(
-                plot_bgcolor="rgba(0,0,0,0)",
-                paper_bgcolor="rgba(0,0,0,0)",
+                plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)",
                 legend_title="Dominant factor",
-                margin=dict(l=10, r=10, t=20, b=20),
+                margin=dict(l=10, r=10, t=10, b=20),
             )
             st.plotly_chart(fig_factors, use_container_width=True)
 
 st.divider()
-st.caption("P2Quant Factor Tilt Engine | P2SAMAPA | Data: Kenneth French Data Library + HuggingFace")
+st.caption("P2Quant Factor Tilt Engine · P2SAMAPA · Factors: Kenneth French Data Library · Results: HuggingFace")
