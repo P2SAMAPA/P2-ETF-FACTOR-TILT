@@ -1,0 +1,37 @@
+name: Daily Factor Tilt Run
+
+on:
+  schedule:
+    - cron: "30 22 * * 1-5"   # 22:30 UTC Mon–Fri (after US market close + data lag)
+  workflow_dispatch:            # allow manual trigger
+
+jobs:
+  run-factor-tilt:
+    runs-on: ubuntu-latest
+    timeout-minutes: 330        # 5.5h hard ceiling — stays inside 6h free tier limit
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run FACTOR-TILT engine
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: python trainer.py
+
+      - name: Upload run log as artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: factor-tilt-log-${{ github.run_id }}
+          path: "*.log"
+          retention-days: 7
