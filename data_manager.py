@@ -53,29 +53,18 @@ def load_master_data() -> pd.DataFrame:
 
 def extract_log_returns(master: pd.DataFrame) -> pd.DataFrame:
     """
-    Extract log return columns for all tickers.
-    Handles MultiIndex columns or flat 'log_return_TICKER' names.
-    Falls back to computing from close prices if neither found.
+    master_data.parquet has bare ticker price columns (SPY, TLT, GLD, etc.).
+    Compute log returns directly from those prices.
     """
-    if isinstance(master.columns, pd.MultiIndex):
-        available = [t for t in ALL_TICKERS if t in master["log_return"].columns]
-        returns = master["log_return"][available].copy()
-    else:
-        flat_map = {t: f"log_return_{t}" for t in ALL_TICKERS if f"log_return_{t}" in master.columns}
-        if flat_map:
-            returns = master[[v for v in flat_map.values()]].rename(
-                columns={v: k for k, v in flat_map.items()}
-            )
-        else:
-            log.warning("log_return columns not found — computing from close prices")
-            close_map = {t: f"close_{t}" for t in ALL_TICKERS if f"close_{t}" in master.columns}
-            closes = master[[v for v in close_map.values()]].rename(
-                columns={v: k for k, v in close_map.items()}
-            )
-            returns = np.log(closes / closes.shift(1))
-
-    returns = returns.dropna(how="all")
-    log.info(f"Log returns extracted: {returns.shape}")
+    log.info(f"Master columns ({len(master.columns)}): {list(master.columns)}")
+    available = [t for t in ALL_TICKERS if t in master.columns]
+    if not available:
+        raise ValueError(
+            f"No expected tickers found in master_data. Columns: {list(master.columns)}"
+        )
+    prices  = master[available].copy().apply(pd.to_numeric, errors="coerce")
+    returns = np.log(prices / prices.shift(1)).dropna(how="all")
+    log.info(f"Log returns computed: {returns.shape}, tickers: {available}")
     return returns
 
 
