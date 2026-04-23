@@ -2,7 +2,7 @@ name: Daily Factor Tilt Run
 
 on:
   schedule:
-    - cron: "30 22 * * 1-5"   # 22:30 UTC Mon–Fri (after US market close + data lag)
+    - cron: "30 23 * * 1-5"   # 23:30 UTC Mon–Fri (after US market close + data lag)
   workflow_dispatch:            # allow manual trigger
 
 jobs:
